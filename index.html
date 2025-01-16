@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Events</title>
+</head>
+<body>
+  <h1>Recent GitHub Events</h1>
+  <div id="events"></div>
+
+  <script>
+    async function fetchEvents() {
+      const response = await fetch('/events');
+      const events = await response.json();
+      
+      const eventsDiv = document.getElementById('events');
+      eventsDiv.innerHTML = '';  // Clear old events
+
+      events.forEach(event => {
+        const eventHtml = `<p>${event.author} ${event.action} to ${event.to_branch} on ${new Date(event.timestamp).toLocaleString()}</p>`;
+        eventsDiv.innerHTML += eventHtml;
+      });
+    }
+
+    // Poll the server every 15 seconds
+    setInterval(fetchEvents, 15000);
+    fetchEvents();  // Initial load
+  </script>
+</body>
+</html>
