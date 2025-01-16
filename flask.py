@@ -4,10 +4,10 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Set up MongoDB connection
-client = MongoClient('mongodb+srv://gritikverma331:OyufWd2vgwOJUBVA@cluster0.uws1t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
-db = client['github_events']  # Create a database called "github_events"
-collection = db['events']  # Collection to store GitHub events
+# Connect to local MongoDB
+client = MongoClient('mongodb://localhost:27017/')
+db = client['github_events']  # Access the "github_events" database
+collection = db['events']  # Access the "events" collection
 
 # Serve plain text on the home route
 @app.route('/')
@@ -37,7 +37,6 @@ def index():
     </script>
     '''
 
-
 # Webhook endpoint to receive GitHub actions
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
@@ -48,9 +47,9 @@ def handle_webhook():
     # Store necessary data in MongoDB
     event_data = {
         "action": request.headers.get('X-GitHub-Event'),
-        "author": data.get('sender', {}).get('login'),
-        "from_branch": data.get('pull_request', {}).get('head', {}).get('ref', ''),
-        "to_branch": data.get('ref'),
+        "author": data.get('sender', {}).get('login', 'Unknown'),
+        "from_branch": data.get('pull_request', {}).get('head', {}).get('ref', 'Unknown'),
+        "to_branch": data.get('ref', 'Unknown'),
         "timestamp": datetime.utcnow()  # Store the time the event was received
     }
     collection.insert_one(event_data)  # Save to MongoDB
@@ -59,9 +58,19 @@ def handle_webhook():
 # API endpoint to fetch events for the UI
 @app.route('/events', methods=['GET'])
 def get_events():
-    # Fetch latest events (within the last 15 seconds) from MongoDB
-    events = list(collection.find().sort("timestamp", -1).limit(10))
-    return jsonify(events), 200
+# Retrieve the last 10 events from MongoDB
+    events = collection.find().sort("timestamp", -1).limit(10)
+    event_list = []
+    for event in events:
+        event_list.append({
+            "action": event.get("action"),
+            "author": event.get("author"),
+            "from_branch": event.get("from_branch"),
+            "to_branch": event.get("to_branch"),
+            "timestamp": event.get("timestamp")
+        })
+    return jsonify(event_list)
 
+# Run the Flask app
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=5001)
